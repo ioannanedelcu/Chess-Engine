@@ -1,1 +1,154 @@
-ioana si ana sunt cele mai smechere
+** Proiect PA 2020 Etapa1 **
+Echipa: Pisici explozive {
+Milcu Ana-Maria, 325 CC
+Nedelcu Ioana, 325 CC
+}
+
+Instructiuni de compilare:
+
+	Codul sursa este scris in C++, in IDE-ul Clion care isi creeaza automat
+un fisier de tip Makefile. Astfel, pentru compilare se va utiliza comanda make 
+care va genera executabilul ourEngine, ce poate fi apoi incarcat in xboard
+pentru testare. 
+
+	> make
+	> xboard -fcp "path_to_project/ourEngine"
+	
+Structura proiectului:
+
+	Pentru o mai buna structurare a implementarii am folosit pentru definirea 
+jocului de sah o clasa (Board), care are ca atribute:
+
+	-> un vector (boardArray), care reprezinta structura efectiva a tablei
+de joc, la care am adaugat o margine pentru verificarea posibilitatii pieselor
+de a face miscari ilegale, parasind suprafata de joc. Vectorul are 120 de 
+pozitii si are, la inceperea jocului, urmatoarea structura:
+
+	        IV, IV, IV, IV, IV, IV, IV, IV, IV, IV,
+            IV, IV, IV, IV, IV, IV, IV, IV, IV, IV,
+            IV, WR, WN, WB, WQ, WK, WB, WN, WR, IV,
+            IV, WP, WP, WP, WP, WP, WP, WP, WP, IV,
+            IV, EM, EM, EM, EM, EM, EM, EM, EM, IV,
+            IV, EM, EM, EM, EM, EM, EM, EM, EM, IV,
+            IV, EM, EM, EM, EM, EM, EM, EM, EM, IV,
+            IV, EM, EM, EM, EM, EM, EM, EM, EM, IV,
+            IV, BP, BP, BP, BP, BP, BP, BP, BP, IV,
+            IV, BR, BN, BB, BQ, BK, BB, BN, BR, IV,
+            IV, IV, IV, IV, IV, IV, IV, IV, IV, IV,
+            IV, IV, IV, IV, IV, IV, IV, IV, IV, IV
+            
+	Pentru a lucra mai usor cu piesele, am folosit urmatoarea codificare:
+	
+    EM = 0,   // Empty
+    WP = 1,   // White Pawn
+    WN = 2,   // White Knight
+    WB = 3,   // White Bishop
+    WR = 4,   // White Rook
+    WQ = 5,   // White Queen
+    WK = 6,   // White King
+    BP = -1,  // Black Pawn
+    BN = -2,  // Black Knight
+    BB = -3,  // Black Bishop
+    BR = -4,  // Black Rook
+    BQ = -5,  // Black Queen
+    BK = -6,  // Black King
+    IV = 99   // INVALID
+    
+	-> un intreg (stm), in care se retine al cui e randul sa faca o mutare
+	-> un vector (legalMoves), in care sunt generate, la fiecare pas, toate
+miscarile legale pe care le poate face unul dintre jucatori
+
+	Comportamental, clasa Board este descrisa de mai multe functii pe care
+noi le-am considerat necesare acestei etape si a caror implementare o vom 
+descrie ulterior.
+
+	Pentru a descrie o MUTARE, am folosit structura MOVE:
+	
+typedef struct MOVE {
+    int from;
+    int to;
+    int piece;
+    int captured;
+    int promoted;
+    MOVE() {}
+    MOVE(int from_, int to_, int piece_, int captured_, int promoted_) {
+        from = from_;
+        to = to_;
+        piece = piece_;
+        captured = captured_;
+        promoted = promoted_;
+    }
+} MOVE;
+
+	Aceasta are ca atribute, pozitia din care se pleaca, pozitia destinatie,
+tipul piesei mutate, precum si doua campuri in care se retine daca mutarea
+respectiva presupune capturarea unei alte piese, respetiv daca in urma mutarii
+s-a facut o promovare (specifica pionilor).
+
+	Pe langa implementarea propriu-zisa a jocului de sah, o parte importanta
+a acestei etape a reprezentat-o REALIZAREA CONEXIUNII CU  programul XBOARD.
+Astfel, programul permite interactiunea cu urmatoarele comenzi: xboard, new, 
+force, go, white, black, quit, resign, move. Fiecare realizeaza diferite actiuni, 
+asa cum sunt ele descrise in documentatia oficiala a XBOARD. Pentru realizarea 
+acestui protocol ne-am inspirat si din scheletul pus la dispozitie de H.G.Muller
+(Example of a WinBoard-protocol driver, by H.G.Muller), disponibil pe Winboard 
+Forum.
+ 
+Detalii despre abordarea algoritmică a etapei
+
+	Asa cum am mentionat deja, clasa Board contine diferite functii, pe care
+le-am considerat necesare implementarii acestei etape a jocului. Din punct de 
+vedere "algoritmic", cele mai relevante pentru aceasta etapa sunt:
+
+	-> findLegalMoves
+	
+	Aceasta functie populeaza vectorul legalMoves cu toate miscarile valide
+in punctul curent al jocului. Acest lucru se realizeaza luand pe rand fiecare
+tip de piesa in parte (pion, cal, nebun, tura, regina, rege) si cicland prin
+posibilele miscari ale fiecareia, in functie de directiile in care ii este
+permis sa mearga si luand in considerare eventualele obstacole.
+
+	O strctura ajutatoare pe care am folosit-o in cadrul acestei functii este:
+	
+    N = 10, S = -10, E = -1, W = 1,
+    NW = 11, SW = -9, NE = 9, SE = -11,
+    NNW = 21, NNE = 19, NWW = 12, NEE = 8,
+    SSW = -19, SSE = -21, SWW = -8, SEE = -12
+ 
+	, in care am retinut offset-urile corespunzatoare mutarii in diferite 
+directii. De exemplu, tura poate merge N, S, E, W, in timp ce nebunul poate
+merge NW, NE, SW, SE etc.
+
+	Un alt aspect relevant este ca, in cazul pionilor, am tratat separat 
+cazurile in care acestia ajung la capatul tablei si deci, vor fi promovati.
+
+	-> makeMove
+	
+	Aceasta functie realizeaza efectiv mutarea pe care o primeste ca parametru,
+modificand structura tablei de joc, adica a vectorului boardArray.
+
+	-> searchBestMove
+	
+	In cadrul acestei etape, functia searchBestMove face un apel al functei rand
+pe vectorul legalMoves, returnand deci o miscare valida oarecare.
+
+Surse de inspiratie:
+
+	Pentru realizarea protocolului de comunicare cu xboard, ne-am inspirat 
+din scheletul pus la dispozitie pe Winboard Forum:
+	http://www.open-aurec.com/wbforum/viewtopic.php?f=24&t=51739
+	
+,respectiv din documentatia oficiala xboard:
+	https://www.gnu.org/software/xboard/engine-intf.html
+	
+	Pentru implementarea efectiva a jocului ne-am inspirat din conventiile
+puse la dispozitie pe:
+	https://www.chessprogramming.org/Main_Page
+	
+	, respectiv din implementarile diferitelor engine-uri, precum gnuchess,
+Fairy-Max, microMax, mchess etc.
+
+Responsabilitatea membrilor
+
+	Pentru aceasta etapa, am lucrat fizic impreuna atat la implementarea
+codului sursa, cat si la partea de documentatie, debug, corectarea erorilor etc.
