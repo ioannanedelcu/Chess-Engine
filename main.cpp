@@ -35,6 +35,8 @@ public:
     int getStm();
     void setStm(int s);
     void changeSides();
+    bool isThreatened (int position);
+    bool isMyKingInCheck ();
 
     vector<int> &getBoardArray();
 
@@ -497,6 +499,145 @@ void Board::findLegalMoves() {
     printf("\n");*/
 }
 
+bool Board::isThreatened (int position) {
+
+    if (stm > 0) { //checking for white pieces
+        //check for 2 possible black pawns
+        if (boardArray[position + NW] == BP || boardArray[position + NE] == BP) {
+            return true;
+        }
+        //check for the 8 possible squares in which a knight could be
+        {
+            int directions[8] = {NNW, NNE, NWW, NEE, SSW, SSE, SWW, SEE};
+
+            for (int k = 0; k < 8; k++)
+            {
+                int direction = directions[k];
+                if (boardArray[position + direction] == BN)
+                    return true;
+            }
+        }
+        //search diagonally for queens or bishops
+        {
+            int directions[4] = {NW, NE, SW, SE};
+
+            for (int k = 0; k < 4; k++)
+            {
+                int direction = directions[k];
+                int  diag = position;
+                while (1)
+                {
+                    diag += direction;
+                    if (boardArray[diag] == BB || boardArray[diag] == BQ)
+                        return true;
+                    //if it finds another piece along the way, stop searching
+                    if (boardArray[diag] != EM)
+                        break;
+                }
+
+            }
+        }
+        // search horizontally and vertically for queens or bishops
+        {
+            int directions[4] = {N, S, W, E};
+
+            for (int k = 0; k < 4; k++)
+            {
+                int direction = directions[k];
+                int liniar = position;
+                while (1)
+                {
+                    liniar += direction;
+                    if (boardArray[liniar] == BR || boardArray[liniar] == BQ)
+                        return true;
+                    //if it finds another piece along the way, stop searching
+                    if (boardArray[liniar] != EM)
+                        break;
+                }
+
+            }
+        }
+
+    } else {
+        //check for 2 possible white pawns
+        if (boardArray[position + SW] == WP || boardArray[position + SE] == WP) {
+            return true;
+        }
+        //check for the 8 possible squares in which a knight could be
+        {
+            int directions[8] = {NNW, NNE, NWW, NEE, SSW, SSE, SWW, SEE};
+
+            for (int k = 0; k < 8; k++)
+            {
+                int direction = directions[k];
+                if (boardArray[position + direction] == WN)
+                    return true;
+            }
+        }
+        //search diagonally for queens or bishops
+        {
+            int directions[4] = {NW, NE, SW, SE};
+
+            for (int k = 0; k < 4; k++)
+            {
+                int direction = directions[k];
+                int diag = position;
+                while (1)
+                {
+                    diag += direction;
+                    if (boardArray[diag] == WB || boardArray[diag] == WQ)
+                        return true;
+                    //if it finds another piece along the way, stop searching
+                    if (boardArray[diag] != EM)
+                        break;
+                }
+
+            }
+        }
+        // search horizontally and vertically for queens or bishops
+        {
+            int directions[4] = {N, S, W, E};
+
+            for (int k = 0; k < 4; k++)
+            {
+                int direction = directions[k];
+                int liniar = position;
+                while (1)
+                {
+                    liniar += direction;
+                    if (boardArray[liniar] == WR || boardArray[liniar] == WQ)
+                        return true;
+                    //if it finds another piece along the way, stop searching
+                    if (boardArray[liniar] != EM)
+                        break;
+                }
+
+            }
+        }
+    }
+
+    return false;
+}
+
+bool Board::isMyKingInCheck() {
+
+    int king, kingPosition = 0;
+
+    if (stm > 0) {
+        king = WK;
+    } else {
+        king = BK;
+    }
+    for (int i = A1; i <= H8; i++) {
+        if (boardArray[i] == king) {
+            kingPosition = i;
+            break;
+        }
+    }
+
+    return isThreatened(kingPosition);
+}
+
 void Board::makeMove(MOVE move) {
 
     boardArray[move.to] = boardArray[move.from];
@@ -609,6 +750,11 @@ int main(int argc, char **argv) {
 
         fflush(stdout);
         if (BOARD.getStm() == engineSide ) {
+            //if the engine is in check, it resigns
+            if (BOARD.isMyKingInCheck()) {
+                printf("resign\n");
+                break;
+            }
             MOVE move  = BOARD.searchBestMove();
             //if there aren't any moves left, set from to INVALID
             if(move.from == INVALID) {         // game apparently ended
@@ -619,6 +765,12 @@ int main(int argc, char **argv) {
                 BOARD.makeMove(move);  // assumes MakeMove returns new side to move
                 moveHistory[moveNr++] = move;  // remember game
 
+                //for this part of the project, if the engine gets itself in check,
+                //it will just resign
+                if (BOARD.isMyKingInCheck()) {
+                    printf("resign\n");
+                    break;
+                }
                 printMove(move);
             }
         }
