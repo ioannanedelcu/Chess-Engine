@@ -24,7 +24,7 @@ de joc, la care am adaugat o margine pentru verificarea posibilitatii pieselor
 de a face miscari ilegale, parasind suprafata de joc. Vectorul are 120 de 
 pozitii si are, la inceperea jocului, urmatoarea structura:
 
-	        IV, IV, IV, IV, IV, IV, IV, IV, IV, IV,
+	    IV, IV, IV, IV, IV, IV, IV, IV, IV, IV,
             IV, IV, IV, IV, IV, IV, IV, IV, IV, IV,
             IV, WR, WN, WB, WQ, WK, WB, WN, WR, IV,
             IV, WP, WP, WP, WP, WP, WP, WP, WP, IV,
