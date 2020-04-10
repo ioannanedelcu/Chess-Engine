@@ -22,7 +22,7 @@ typedef enum {
     BQ = -5,  // Black Queen
     BK = -6,  // Black King
     IV = 99   // INVALID
-}piece;
+} piece;
 
 //move structure
 typedef struct MOVE {
@@ -33,13 +33,7 @@ typedef struct MOVE {
     int captured;
     int promoted;
 
-    MOVE() {
-        from = EM;
-        to = EM;
-        piece = EM;
-        captured = EM;
-        promoted = EM;
-    }
+    MOVE() {}
 
     MOVE(const MOVE &a) {
         from = a.from;
@@ -90,21 +84,9 @@ enum // Directions
 
 // some parameter of your engine
 #define MAXMOVES 500  /* maximum game length  */
-#define MAXPLY   60   /* maximum search depth */
+#define DEPTH   3   /* maximum search depth */
+#define BESTSCORE 9999
 
-#define OFF 0
-#define ON  1
-
-
-// Some routines your engine should have to do the various essential things
-int  MakeMove(int stm, MOVE move);      // performs move, and returns new side to move
-//void UnMake(MOVE move);                 // unmakes the move;
-int Setup();                  // sets up the position from the given FEN, and returns the new side to move
-//void SetMemorySize(int n);              // if n is different from last time, resize all tables to make memory usage below n MB
-//char *MoveToText(MOVE move);            // converts the move from your internal format to text like e2e2, e1g1, a7a8q.
-//MOVE ParseMove(char *moveText);         // converts a long-algebraic text move to your internal move format
-void searchBestMove(int stm, int timeLeft, int mps, int timeControl, int inc, int timePerMove, MOVE *move, MOVE *ponderMove);
-void PonderUntilInput(int stm);         // Search current position for stm, deepening forever until there is input.
 
 
 #endif //CHESS_PROJECT_HEADER_H
