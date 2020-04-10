@@ -1,21 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cstring>
+#include <iostream>
 #include <csignal>
 #include <ctime>
 #include <vector>
 #include "header.h"
 
 using namespace std;
-
-/*
-// Some global variables that control your engine's behavior
-int ponder;
-int randomize;
-int postThinking;
-int resign;         // engine-defined option
-int contemptFactor; // likewise
- */
 
 class Board {
 
@@ -28,15 +20,17 @@ public:
     Board (const Board& copy);
 
     void newGame();
-    void findLegalMoves ();
+    vector<MOVE> findLegalMoves ();
     void makeMove (MOVE move);
+    void undoMove (MOVE move);
     bool isValid (MOVE move);
-    MOVE searchBestMove();
+    //MOVE searchBestMove();
     int getStm();
     void setStm(int s);
     void changeSides();
     bool isThreatened (int position);
     bool isMyKingInCheck ();
+    int eval ();
 
     vector<int> &getBoardArray();
 
@@ -45,9 +39,10 @@ private:
         stm = -stm;
     }
 
-    vector<MOVE> legalMoves;
+    //vector<MOVE> legalMoves;
     vector<int> boardArray;
     int stm; //side to move
+    int score = 0;
 
 };
 
@@ -70,26 +65,25 @@ void Board::newGame()
             IV, IV, IV, IV, IV, IV, IV, IV, IV, IV} ;
 
     boardArray.reserve(120);
-    for (int i=0; i<120; ++i)
-    {
+    for (int i=0; i<120; ++i) {
+
         boardArray[i] = initial[i];
     }
 
     stm = WHITE;
 }
 
-void Board::findLegalMoves() {
+vector<MOVE> Board::findLegalMoves() {
 
+    vector<MOVE> legalMoves;
 
-    legalMoves.clear();
-
-
-    if (stm > 0) { //for white pieces
+    //for white pieces
+    if (stm > 0) { 
         for (int i = A1; i <= H8; i++) {
 
             int j;
-
             int currentPiece = boardArray[i];
+
             switch (currentPiece) {
                 //white pawn
                 case WP: {
@@ -288,7 +282,7 @@ void Board::findLegalMoves() {
             }
         }
     }
-        //black pieces
+    //black pieces
     else {
         for (int i = A1; i <= H8; i++) {
 
@@ -494,9 +488,8 @@ void Board::findLegalMoves() {
             }
         }
     }
-   /* for (int i = 0; i < legalMoves.size(); i++)
-        printf ("%d %d,", legalMoves[i].from, legalMoves[i].to );
-    printf("\n");*/
+
+    return legalMoves;
 }
 
 bool Board::isThreatened (int position) {
@@ -640,6 +633,25 @@ bool Board::isMyKingInCheck() {
 
 void Board::makeMove(MOVE move) {
 
+    switch (move.captured)
+    {
+        case WP : case BP : score += 1; break;
+        case WN : case BN : score += 3; break;
+        case WB : case BB : score += 3; break;
+        case WR : case BR : score += 5; break;
+        case WQ : case BQ :score += 9; break;
+        default : break;
+    }
+
+    switch (move.promoted)
+    {
+        case WN : case BN :score += 3-1; break;
+        case WB : case BB : score += 3-1; break;
+        case WR : case BR : score += 5-1; break;
+        case WQ : case BQ : score += 9-1; break;
+        default : break;
+    }
+
     boardArray[move.to] = boardArray[move.from];
     boardArray[move.from] = EM;
     if (move.promoted != EM) {
@@ -647,12 +659,43 @@ void Board::makeMove(MOVE move) {
     }
 
     swapSides(); //update the next side to move
+    score = (-1) * score;
 }
+
+void Board::undoMove(MOVE move) {
+
+    score = (-1) * score;
+
+    switch (move.captured)
+    {
+        case WP : case BP : score -= 1; break;
+        case WN : case BN : score -= 3; break;
+        case WB : case BB : score -= 3; break;
+        case WR : case BR : score -= 5; break;
+        case WQ : case BQ :score -= 9; break;
+        default : break;
+    }
+
+    switch (move.promoted)
+    {
+        case WN : case BN :score -= 3-1; break;
+        case WB : case BB : score -= 3-1; break;
+        case WR : case BR : score -= 5-1; break;
+        case WQ : case BQ : score -= 9-1; break;
+        default : break;
+    }
+
+    boardArray[move.from] = move.piece;
+    boardArray[move.to] = move.captured;
+
+    swapSides(); //update the next side to move
+}
+
 
 //returns true or false if it finds any valid moves
 bool Board::isValid(MOVE move) {
 
-    findLegalMoves();
+    vector<MOVE> legalMoves = findLegalMoves();
 
     for (int i = 0; i < legalMoves.size(); i++) {
         if (move.from == legalMoves[i].from && move.to == legalMoves[i].to) {
@@ -663,12 +706,75 @@ bool Board::isValid(MOVE move) {
     return false;
 }
 
-MOVE Board::searchBestMove() {
+int Board::eval()
+{
+    if ( isMyKingInCheck() )
+        return -BESTSCORE;
 
-    findLegalMoves();
+    vector<MOVE> legalMoves = findLegalMoves();
+    int my_moves = legalMoves.size();
+    swapSides();
+
+    legalMoves.clear();
+    legalMoves =findLegalMoves();
+    int opponent_moves = legalMoves.size();
+    swapSides();
+
+    return (my_moves - opponent_moves) + 100 * score;
+}
+
+int minimax(int depth, Board &board) {
+
+    if (depth == 0) {
+        return board.eval();
+    }
+    vector<MOVE> moves;
+    moves = board.findLegalMoves();
+
+    int best_score = -BESTSCORE;
+
+    for (int i = 0; i < moves.size(); i++) {
+
+        // Opponent's king can be captured. That means he is check-mated.
+        if (moves[i].captured == BK || moves[i].captured == WK) {
+            return 9000 + depth;
+        }
+
+        board.makeMove(moves[i]);
+        int score = - minimax(depth - 1, board);
+        board.undoMove(moves[i]);
+
+        if (score > best_score) {
+            best_score = score;
+        }
+    }
+    return best_score;
+}
+
+MOVE searchBestMove(Board &board) {
+
+    vector<MOVE> legalMoves = board.findLegalMoves();
     srand((int)time(0));
-    int randomIndex = rand() % legalMoves.size();
-    return legalMoves[randomIndex];
+
+    vector<MOVE> bestMoves;
+    int best_score = -BESTSCORE;
+
+    for (int i = 0; i < legalMoves.size(); i++) {
+        board.makeMove(legalMoves[i]);
+        int score = -minimax(DEPTH, board);
+        board.undoMove(legalMoves[i]);
+
+        if (score > best_score) {
+            best_score = score;
+            bestMoves.clear();
+            bestMoves.push_back(legalMoves[i]);
+        } else if (score == best_score) {
+            bestMoves.push_back(legalMoves[i]);
+        }
+    }
+
+    int randomIndex = rand() % bestMoves.size();
+    return bestMoves[randomIndex];
 }
 
 void Board::changeSides() {
@@ -690,6 +796,7 @@ void Board::setStm(int s) {
 }
 
 MOVE parseMove(char *str) {
+
     MOVE move;
     int col = str[0] - 'a';
     int row = str[1] - '0';
@@ -717,29 +824,18 @@ vector<int> &Board::getBoardArray()  {
     return boardArray;
 }
 
-void PrintResult(int stm, int score)
-{
-    /*if(score == 0) printf("1/2-1/2\n");
-    if(score > 0 && stm == WHITE || score < 0 && stm == BLACK) printf("1-0\n");
-    else printf("0-1\n");
-    */
+void PrintResult(int stm, int score) {
+    
     printf("Not yet available\n");
 }
 
 
 int main(int argc, char **argv) {
 
-    int engineSide = NONE;                    // side played by engine
-    //vector<MOVE> movesList;                 //lista de mutari
+    int engineSide = NONE;       // side played by engine
     int moveNr = 0;              // part of game state; incremented by makeMove
-    MOVE moveHistory[MAXMOVES]; // holds the game history
-
-
-    int timeLeft;                            // timeleft on engine's clock
-    //int mps, timeControl, inc, timePerMove;  // time-control parameters, to be used by Search
-    //int maxDepth;                            // used by search
-    // MOVE move, ponderMove;
-    int i, score;
+    MOVE moveHistory[MAXMOVES];  // holds the game history
+    int i;
 
 
     char inBuf[80], command[80];
@@ -750,51 +846,26 @@ int main(int argc, char **argv) {
 
         fflush(stdout);
         if (BOARD.getStm() == engineSide ) {
-            //if the engine is in check, it resigns
-            if (BOARD.isMyKingInCheck()) {
-                printf("resign\n");
-                break;
-            }
-            MOVE move  = BOARD.searchBestMove();
+
+            MOVE move  = searchBestMove(BOARD);
             //if there aren't any moves left, set from to INVALID
-            if(move.from == INVALID) {         // game apparently ended
-                engineSide = NONE;          // so stop playing
-                //PrintResult(BOARD.getStm(), score);
-                break;
-            } else {
-                BOARD.makeMove(move);  // assumes MakeMove returns new side to move
+            //if(move.from == INVALID) {
+            //    engineSide = NONE;
+            //    break;
+            //}
+            //else {
+
+                BOARD.makeMove(move);  
                 moveHistory[moveNr++] = move;  // remember game
 
-                //for this part of the project, if the engine gets itself in check,
-                //it will just resign
-                if (BOARD.isMyKingInCheck()) {
-                    printf("resign\n");
-                    break;
-                }
                 printMove(move);
-            }
+            //}
         }
 
         fflush (stdout);
-
-        // now it is not our turn (anymore)
-        /*if(engineSide == ANALYZE) {       // in analysis, we always ponder the position
-            PonderUntilInput(stm);
-        } else
-        if(engineSide != NONE && ponder == ON && moveNr != 0) { // ponder while waiting for input
-            if(ponderMove == INVALID) {     // if we have no move to ponder on, ponder the position
-                PonderUntilInput(stm);
-            } else {
-                int newStm = MakeMove(stm, ponderMove);
-                PonderUntilInput(newStm);
-                UnMake(ponderMove);
-            }
-        }*/
-
         // wait for input, and read it until we have collected a complete line
         for(i = 0; (inBuf[i] = getchar()) != '\n'; i++);
         inBuf[i+1] = '\0';
-
         // extract the first word
         sscanf(inBuf, "%s", command);
 
@@ -802,10 +873,12 @@ int main(int argc, char **argv) {
         if(!strcmp(command, "quit")) {
             break;
         } // breaks out of infinite loop
+
         if(!strcmp(command, "force")) {
             engineSide = NONE;
             continue;
         }
+
         if(!strcmp(command, "new")) {
             engineSide = BLACK;
             BOARD.newGame();
@@ -822,6 +895,11 @@ int main(int argc, char **argv) {
             continue;
         }
 
+        if(!strcmp(command, "protover")){
+            printf("feature san = 0");
+            continue;
+        }
+
         if (!strcmp(command, "white")) {
             /* set white to move in current position */
             if(BOARD.getStm() == BLACK) {
@@ -830,6 +908,7 @@ int main(int argc, char **argv) {
             engineSide = BLACK;
             continue;
         }
+
         if (!strcmp(command, "black")) {
             /* set black to move in current position */
             if(BOARD.getStm() == WHITE) {
@@ -839,6 +918,7 @@ int main(int argc, char **argv) {
             continue;
         }
 
+        //if it receves a valid move format
         if(command[1] >= '1' && command[1] <='9') {
             MOVE move = parseMove(command);
             if(!BOARD.isValid(move)) {
@@ -846,24 +926,17 @@ int main(int argc, char **argv) {
             }
             else {
                 BOARD.makeMove(move);
-                //ponderMove = INVALID;
                 moveHistory[moveNr++] = move;  // remember game
             }
             continue;
         }
 
         if(!strcmp(command, "resign")) {
-            //to add scoring, resign = giving up
-            break;
-        }
-        if(!strcmp(command, "Illegal")) {
-            printf("resign\n");
+            //resign = giving up
             break;
         }
 
-        //white, black, resign, move
         printf("Error: unknown command\n");
-
     }
 
     return 0;
