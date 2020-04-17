@@ -5,6 +5,7 @@
 #include <csignal>
 #include <ctime>
 #include <vector>
+#include <fstream>
 #include "header.h"
 
 using namespace std;
@@ -46,8 +47,10 @@ public:
     bool isThreatened (int position);
     bool isMyKingInCheck ();
     int eval ();
+    void printBoard (std::ofstream &OutputFile);
 
     vector<int> &getBoardArray();
+    vector<MOVE>  moveHistory;
 
 private:
     void swapSides() {
@@ -57,7 +60,7 @@ private:
     vector<int> boardArray;
     int stm; //side to move
     int score = 0;
-    vector<MOVE>  moveHistory;
+
 
     //flags for castling
     int smallBlackCastling = 0;
@@ -93,6 +96,20 @@ void Board::newGame()
 
     stm = WHITE;
 }
+
+void Board::printBoard (std::ofstream &out){
+
+    for (int i = A8; i >= A1; i-=10) {
+        for (int j = 0; j < 8; j++)
+            if (boardArray[i + j] < 0)
+                out << boardArray[j + i] << " ";
+            else
+                out << boardArray[j + i] << "  ";
+        out << endl;
+    }
+
+    out << endl << endl;
+};
 
 vector<MOVE> Board::findLegalMoves() {
 
@@ -325,7 +342,7 @@ vector<MOVE> Board::findLegalMoves() {
         //check for 2 possible castlings for white
         if (bigWhiteCastling == 0 && boardArray[A1] == WR && boardArray[E1] == WK) {
             if (boardArray[B1] == EM && boardArray[C1] == EM && boardArray[D1] == EM) {
-                if(!(isThreatened(E1) && isThreatened(D1) && isThreatened(C1))) {
+                if(!(isThreatened(E1) || isThreatened(D1) || isThreatened(C1))) {
                     MOVE m(E1, C1, WK, EM, EM, 0, BCASTLING);
                     legalMoves.push_back(m);
                 }
@@ -333,7 +350,7 @@ vector<MOVE> Board::findLegalMoves() {
         }
         if (smallWhiteCastling == 0 && boardArray[H1] == WR && boardArray[E1] == WK) {
             if (boardArray[G1] == EM && boardArray[F1] == EM) {
-                if(!(isThreatened(E1) && isThreatened(F1) && isThreatened(G1))) {
+                if(!(isThreatened(E1) || isThreatened(F1) || isThreatened(G1))) {
                     MOVE m(E1, G1, WK, EM, EM, 0, SCASTLING);
                     legalMoves.push_back(m);
                 }
@@ -571,7 +588,7 @@ vector<MOVE> Board::findLegalMoves() {
         //check for 2 possible castlings for black
         if (bigBlackCastling == 0 && boardArray[A8] == BR && boardArray[E8] == BK) {
             if (boardArray[B8] == EM && boardArray[C8] == EM && boardArray[D8] == EM) {
-                if(!(isThreatened(E8) && isThreatened(D8) && isThreatened(C8))) {
+                if(!(isThreatened(E8) || isThreatened(D8) || isThreatened(C8))) {
                     MOVE m(E8, C8, BK, EM, EM, 0, BCASTLING);
                     legalMoves.push_back(m);
                 }
@@ -579,11 +596,21 @@ vector<MOVE> Board::findLegalMoves() {
         }
         if (smallBlackCastling == 0 && boardArray[H8] == BR && boardArray[E8] == BK) {
             if (boardArray[G8] == EM && boardArray[F8] == EM) {
-                if(!(isThreatened(E8) && isThreatened(F8) && isThreatened(G8))) {
+                if(!(isThreatened(E8) || isThreatened(F8) || isThreatened(G8))) {
                     MOVE m(E8, G8, BK, EM, EM, 0, SCASTLING);
                     legalMoves.push_back(m);
                 }
             }
+        }
+    }
+
+    if (isMyKingInCheck()) {
+        for (int i = 0; i < legalMoves.size(); i++) {
+            MOVE m(legalMoves[i]);
+            Board copy((*this));
+            copy.makeMove(legalMoves[i]);
+            if (copy.isMyKingInCheck())
+                legalMoves.erase(legalMoves.begin() + i);
         }
     }
 
@@ -965,6 +992,16 @@ void printMove(MOVE move, int side) {
     printf("move %s\n", str);
 }
 
+void printFMove(MOVE move, ofstream &out) {
+
+    char str[5];
+    str[0] = (move.from) % 10 + 'a' - 1;
+    str[1] = (move.from) / 10 + '0' - 1;
+    str[2] = (move.to) % 10 + 'a' - 1;
+    str[3] = (move.to) / 10 + '0' - 1;
+    out << str << endl;
+}
+
 MOVE searchBestMove(Board &board) {
 
     vector<MOVE> legalMoves = board.findLegalMoves();
@@ -1012,6 +1049,31 @@ void Board::setStm(int s) {
 
 MOVE parseMove(char *str) {
 
+    if (!strcmp(str, "e1c1")) {
+        if (BOARD.getBoardArray()[E1] == WK) {
+            MOVE move(E1, C1, WK, 0, 0, 0, BCASTLING);
+            return move;
+        }
+    }
+    if (!strcmp(str, "e1g1")) {
+        if (BOARD.getBoardArray()[E1] == WK) {
+            MOVE move(E1, G1, WK, 0, 0, 0, SCASTLING);
+            return move;
+        }
+    }
+    if (!strcmp(str, "e8c8")) {
+        if (BOARD.getBoardArray()[E8] == BK) {
+            MOVE move(E8, C8, BK, 0, 0, 0, BCASTLING);
+            return move;
+        }
+    }
+    if (!strcmp(str, "e8g8")) {
+        if (BOARD.getBoardArray()[E8] == BK) {
+            MOVE move(E8, G8, BK, 0, 0, 0, SCASTLING);
+            return move;
+        }
+    }
+
     MOVE move;
     int col = str[0] - 'a';
     int row = str[1] - '0';
@@ -1021,6 +1083,64 @@ MOVE parseMove(char *str) {
     move.to = (row + 1) * 10 + col + 1;
     move.piece = BOARD.getBoardArray()[move.from];
     move.captured = BOARD.getBoardArray()[move.to];
+
+    if (strlen(str) > 4) {
+        if (BOARD.getStm() > 0) {
+            if (str[4] == 'q')
+                move.promoted = WQ;
+            if (str[4] == 'r')
+                move.promoted = WR;
+            if (str[4] == 'n')
+                move.promoted = WN;
+            if (str[4] == 'b')
+                move.promoted = WB;
+        } else {
+            if (str[4] == 'q')
+                move.promoted = BQ;
+            if (str[4] == 'r')
+                move.promoted = BR;
+            if (str[4] == 'n')
+                move.promoted = BN;
+            if (str[4] == 'b')
+                move.promoted = BB;
+        }
+    } else {
+
+        //en-passant - white
+        int i = move.from, j = move.to;
+        if (move.piece == WP && i >= 61 && i <= 68) {
+            MOVE previousMove = BOARD.moveHistory[BOARD.moveHistory.size() - 1];
+            //capture left
+            if (previousMove.from == i + 19 && previousMove.to == i - 1 && previousMove.piece == BP && j == i + 9) {
+                move.captured = BOARD.getBoardArray()[i - 1];
+                move.en_pasant = i - 1;
+                return move;
+            }
+            //capture right
+            if (previousMove.from == i + 21 && previousMove.to == i + 1 && previousMove.piece == BP && j == i + 11) {
+                move.captured = BOARD.getBoardArray()[i + 1];
+                move.en_pasant = i + 1;
+                return move;
+            }
+        }
+        //en-passant - black
+        if (move.piece == BP && i >= 51 && i <= 58) {
+            MOVE previousMove = BOARD.moveHistory[BOARD.moveHistory.size() - 1];
+            //capture left
+            if (previousMove.from == i - 19 && previousMove.to == i + 1 && previousMove.piece == BP && j == i - 9) {
+                move.captured = BOARD.getBoardArray()[i + 1];
+                move.en_pasant = i + 1;
+                return move;
+            }
+            //capture right
+            if (previousMove.from == i - 21 && previousMove.to == i - 1 && previousMove.piece == BP && j == i - 11) {
+                move.captured = BOARD.getBoardArray()[i - 1];
+                move.en_pasant = i - 1;
+                return move;
+            }
+        }
+    }
+
     return move;
 }
 
@@ -1040,6 +1160,7 @@ int main(int argc, char **argv) {
 
     int engineSide = NONE;       // side played by engine
     int i;
+    ofstream out ("out");
 
 
     char inBuf[80], command[80];
@@ -1053,6 +1174,8 @@ int main(int argc, char **argv) {
 
             MOVE move  = searchBestMove(BOARD);
             BOARD.makeMove(move);
+            printFMove(move, out);
+            BOARD.printBoard(out);
             printMove(move, engineSide);
         }
 
@@ -1090,7 +1213,7 @@ int main(int argc, char **argv) {
         }
 
         if(!strcmp(command, "protover")){
-            printf("feature san = 0");
+            printf("feature san=0");
             continue;
         }
 
@@ -1120,6 +1243,8 @@ int main(int argc, char **argv) {
             }
             else {
                 BOARD.makeMove(move);
+                printFMove(move, out);
+                BOARD.printBoard(out);
             }
             continue;
         }
@@ -1131,6 +1256,8 @@ int main(int argc, char **argv) {
 
         printf("Error: unknown command\n");
     }
+
+    out.close();
 
     return 0;
 }
