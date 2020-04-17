@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <csignal>
@@ -13,18 +13,33 @@ class Board {
 
 public:
     Board() {
+        stm = WHITE;
         newGame();
     }
 
     //copy constructor
-    Board (const Board& copy);
+    Board (const Board& copy) {
+        boardArray.reserve(120);
+        for (int i = 0; i < 120; ++i) {
+
+            boardArray[i] = copy.boardArray[i];
+        }
+        stm = copy.stm;
+        score = copy.score;
+        for (int i = 0; i < copy.moveHistory.size(); i++) {
+            moveHistory.push_back(copy.moveHistory[i]);
+        }
+        smallBlackCastling = copy.smallBlackCastling;
+        bigBlackCastling = copy.bigBlackCastling;
+        smallWhiteCastling = copy.smallWhiteCastling;
+        bigWhiteCastling = copy.bigWhiteCastling;
+    }
 
     void newGame();
     vector<MOVE> findLegalMoves ();
     void makeMove (MOVE move);
     void undoMove (MOVE move);
     bool isValid (MOVE move);
-    //MOVE searchBestMove();
     int getStm();
     void setStm(int s);
     void changeSides();
@@ -45,11 +60,10 @@ private:
     vector<MOVE>  moveHistory;
 
     //flags for castling
-    int smallBlackCastling;
-    int bigBlackCastling;
-    int smallWhiteCastling;
-    int bigWhiteCastling;
-
+    int smallBlackCastling = 0;
+    int bigBlackCastling = 0;
+    int smallWhiteCastling = 0;
+    int bigWhiteCastling = 0;
 
 };
 
@@ -85,7 +99,7 @@ vector<MOVE> Board::findLegalMoves() {
     vector<MOVE> legalMoves;
 
     //for white pieces
-    if (stm > 0) { 
+    if (stm > 0) {
         for (int i = A1; i <= H8; i++) {
 
             int j;
@@ -187,27 +201,27 @@ vector<MOVE> Board::findLegalMoves() {
                         }
                     }
 
-                   //en-passant
-                   if (i >= 61 && i <= 68 && moveHistory.size() != 0) {
-                       //capture left
-                       MOVE previousMove = moveHistory[moveHistory.size() - 1];
-                       //if last move was a two square move in my left
-                       if (previousMove.from == i + 19 && previousMove.to == i - 1 && previousMove.piece == BP) {
-                           j = i + 9;
-                           MOVE m(i, j, currentPiece, boardArray[i - 1], EM, i - 1, 0);
-                           legalMoves.push_back(m);
-                       }
+                    //en-passant
+                    if (i >= 61 && i <= 68 && moveHistory.size() != 0) {
+                        //capture left
+                        MOVE previousMove = moveHistory[moveHistory.size() - 1];
+                        //if last move was a two square move in my left
+                        if (previousMove.from == i + 19 && previousMove.to == i - 1 && previousMove.piece == BP) {
+                            j = i + 9;
+                            MOVE m(i, j, currentPiece, boardArray[i - 1], EM, i - 1, 0);
+                            legalMoves.push_back(m);
+                        }
 
-                       //capture right
-                       if (previousMove.from == i + 21 && previousMove.to == i + 1 && previousMove.piece == BP) {
-                           j = i +11;
-                           MOVE m(i, j, currentPiece, boardArray[i + 1], EM, i + 1, 0);
-                           legalMoves.push_back(m);
-                       }
-                   }
+                        //capture right
+                        if (previousMove.from == i + 21 && previousMove.to == i + 1 && previousMove.piece == BP) {
+                            j = i +11;
+                            MOVE m(i, j, currentPiece, boardArray[i + 1], EM, i + 1, 0);
+                            legalMoves.push_back(m);
+                        }
+                    }
 
                 } break;
-                //white bishop
+                    //white bishop
                 case WB: {
                     int directions[4] = {NW, NE, SW, SE};
 
@@ -228,7 +242,7 @@ vector<MOVE> Board::findLegalMoves() {
                         }
                     }
                 } break;
-                //white knight
+                    //white knight
                 case WN: {
 
                     int directions[8] = {NNW, NNE, NWW, NEE, SSW, SSE, SWW, SEE};
@@ -243,7 +257,7 @@ vector<MOVE> Board::findLegalMoves() {
                         }
                     }
                 } break;
-                //white rook
+                    //white rook
                 case WR: {
                     int directions[4] = {N, S, W, E};
 
@@ -264,7 +278,7 @@ vector<MOVE> Board::findLegalMoves() {
                         }
                     }
                 } break;
-                //white queen
+                    //white queen
                 case WQ: {
                     int directions[8] = {N, S, W, E, NW, NE, SE, SW};
 
@@ -287,7 +301,7 @@ vector<MOVE> Board::findLegalMoves() {
                 } break;
 
                 case WK: {
-                //white king
+                    //white king
                     int directions[8] = {N, S, W, E, NW, NE, SE, SW};
                     for (int k = 0; k < 8; k++) {
                         j = i;
@@ -326,7 +340,7 @@ vector<MOVE> Board::findLegalMoves() {
             }
         }
     }
-    //black pieces
+        //black pieces
     else {
         for (int i = A1; i <= H8; i++) {
 
@@ -453,7 +467,7 @@ vector<MOVE> Board::findLegalMoves() {
                     }
 
                 } break;
-                //black bishop
+                    //black bishop
                 case BB: {
                     int directions[4] = {NW, NE, SW, SE};
 
@@ -474,7 +488,7 @@ vector<MOVE> Board::findLegalMoves() {
                         }
                     }
                 } break;
-                //black knight
+                    //black knight
                 case BN: {
 
                     int directions[8] = {NNW, NNE, NWW, NEE, SSW, SSE, SWW, SEE};
@@ -490,7 +504,7 @@ vector<MOVE> Board::findLegalMoves() {
                         }
                     }
                 } break;
-                //black rook
+                    //black rook
                 case BR: {
                     int directions[4] = {N, S, W, E};
 
@@ -511,7 +525,7 @@ vector<MOVE> Board::findLegalMoves() {
                         }
                     }
                 } break;
-                //black queen
+                    //black queen
                 case BQ: {
                     int directions[8] = {N, S, W, E, NW, NE, SE, SW};
 
@@ -532,7 +546,7 @@ vector<MOVE> Board::findLegalMoves() {
                         }
                     }
                 } break;
-                //black knight
+                    //black knight
                 case BK: {
 
                     int directions[8] = {N, S, W, E, NW, NE, SE, SW};
@@ -558,7 +572,7 @@ vector<MOVE> Board::findLegalMoves() {
         if (bigBlackCastling == 0 && boardArray[A8] == BR && boardArray[E8] == BK) {
             if (boardArray[B8] == EM && boardArray[C8] == EM && boardArray[D8] == EM) {
                 if(!(isThreatened(E8) && isThreatened(D8) && isThreatened(C8))) {
-                    MOVE m(E1, C1, BK, EM, EM, 0, BCASTLING);
+                    MOVE m(E8, C8, BK, EM, EM, 0, BCASTLING);
                     legalMoves.push_back(m);
                 }
             }
@@ -779,8 +793,9 @@ void Board::makeMove(MOVE move) {
             }
         }
     } else {
-
+        //printf("move.from: %d, move.to: %d\n", move.from, move.to);
         boardArray[move.to] = boardArray[move.from];
+
         boardArray[move.from] = EM;
         //case en-passant
         if (move.en_pasant != 0) {
@@ -894,7 +909,7 @@ bool Board::isValid(MOVE move) {
 
 int Board::eval()
 {
-    if ( isMyKingInCheck() )
+    if (isMyKingInCheck())
         return -BESTSCORE;
 
     vector<MOVE> legalMoves = findLegalMoves();
@@ -902,7 +917,7 @@ int Board::eval()
     swapSides();
 
     legalMoves.clear();
-    legalMoves =findLegalMoves();
+    legalMoves = findLegalMoves();
     int opponent_moves = legalMoves.size();
     swapSides();
 
@@ -911,11 +926,14 @@ int Board::eval()
 
 int minimax(int depth, Board &board) {
 
+    //printf("depth is %d\n", depth);
+
     if (depth == 0) {
+        //printf("la cuca racea\n");
         return board.eval();
     }
-    vector<MOVE> moves;
-    moves = board.findLegalMoves();
+    vector<MOVE> moves = board.findLegalMoves();
+    //printf("moves size: %d, side: %d", moves.size(), board.getStm());
 
     int best_score = -BESTSCORE;
 
@@ -926,9 +944,9 @@ int minimax(int depth, Board &board) {
             return 9000 + depth;
         }
 
-        board.makeMove(moves[i]);
-        int score = - minimax(depth - 1, board);
-        board.undoMove(moves[i]);
+        Board copy(board);
+        copy.makeMove(moves[i]);
+        int score = - minimax(depth - 1, copy);
 
         if (score > best_score) {
             best_score = score;
@@ -939,43 +957,27 @@ int minimax(int depth, Board &board) {
 
 void printMove(MOVE move, int side) {
 
-    if (move.castling) {
-        if (side == WHITE) {
-            if (move.castling == SCASTLING)
-                printf("move e1g1\n");
-            else {
-                printf("move e1c1\n");
-            }
-        } else {
-            if (move.castling == SCASTLING)
-                printf("move e8g8\n");
-            else
-                printf("move e8c8\n");
-        }
-    } else {
-
-        char str[5];
-        str[0] = (move.from) % 10 + 'a' - 1;
-        str[1] = (move.from) / 10 + '0' - 1;
-        str[2] = (move.to) % 10 + 'a' - 1;
-        str[3] = (move.to) / 10 + '0' - 1;
-        printf("move %s\n", str);
-    }
-
+    char str[5];
+    str[0] = (move.from) % 10 + 'a' - 1;
+    str[1] = (move.from) / 10 + '0' - 1;
+    str[2] = (move.to) % 10 + 'a' - 1;
+    str[3] = (move.to) / 10 + '0' - 1;
+    printf("move %s\n", str);
 }
 
 MOVE searchBestMove(Board &board) {
 
     vector<MOVE> legalMoves = board.findLegalMoves();
     srand((int)time(0));
+    //printf("moves size: %d, side: %d", legalMoves.size(), board.getStm());
 
     vector<MOVE> bestMoves;
     int best_score = -BESTSCORE;
 
     for (int i = 0; i < legalMoves.size(); i++) {
-        board.makeMove(legalMoves[i]);
-        int score = -minimax(DEPTH, board);
-        board.undoMove(legalMoves[i]);
+        Board copy(board);
+        copy.makeMove(legalMoves[i]);
+        int score = -minimax(DEPTH, copy);
 
         if (score > best_score) {
             best_score = score;
@@ -1029,7 +1031,7 @@ vector<int> &Board::getBoardArray()  {
 }
 
 void PrintResult(int stm, int score) {
-    
+
     printf("Not yet available\n");
 }
 
@@ -1050,16 +1052,8 @@ int main(int argc, char **argv) {
         if (BOARD.getStm() == engineSide ) {
 
             MOVE move  = searchBestMove(BOARD);
-            //if there aren't any moves left, set from to INVALID
-            //if(move.from == INVALID) {
-            //    engineSide = NONE;
-            //    break;
-            //}
-            //else {
-
-                BOARD.makeMove(move);
-                printMove(move, engineSide);
-            //}
+            BOARD.makeMove(move);
+            printMove(move, engineSide);
         }
 
         fflush (stdout);
@@ -1118,7 +1112,7 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        //if it receves a valid move format
+        //if it receives a valid move format
         if(command[1] >= '1' && command[1] <='9') {
             MOVE move = parseMove(command);
             if(!BOARD.isValid(move)) {
