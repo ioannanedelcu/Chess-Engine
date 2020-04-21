@@ -1,0 +1,247 @@
+** Proiect PA 2020 Etapa2 **
+Echipa: Pisici explozive {
+Milcu Ana-Maria, 325 CC
+Nedelcu Ioana, 325 CC
+}
+
+Instructiuni de compilare:
+	Pentru compilarea codului sursa se utilizeaza comanda make build
+sau direct make. Rularea se poate face folosind make run sau ./main. 
+	
+
+Structura proiectului:
+
+	Reamintim ca tabla de joc este reprezentata printr-un vector 
+(boardArray) cu 120 de pozitii (marginea este folosita pentru verificarea
+posibilitatii pieselor de a face miscari ilegale, parasind suprafata de joc. 
+La innceputl jocului, vectorul are urmatoarea structura:
+
+	    IV, IV, IV, IV, IV, IV, IV, IV, IV, IV,
+            IV, IV, IV, IV, IV, IV, IV, IV, IV, IV,
+            IV, WR, WN, WB, WQ, WK, WB, WN, WR, IV,
+            IV, WP, WP, WP, WP, WP, WP, WP, WP, IV,
+            IV, EM, EM, EM, EM, EM, EM, EM, EM, IV,
+            IV, EM, EM, EM, EM, EM, EM, EM, EM, IV,
+            IV, EM, EM, EM, EM, EM, EM, EM, EM, IV,
+            IV, EM, EM, EM, EM, EM, EM, EM, EM, IV,
+            IV, BP, BP, BP, BP, BP, BP, BP, BP, IV,
+            IV, BR, BN, BB, BQ, BK, BB, BN, BR, IV,
+            IV, IV, IV, IV, IV, IV, IV, IV, IV, IV,
+            IV, IV, IV, IV, IV, IV, IV, IV, IV, IV
+
+	Reamintim de asemenea codificarea pieselor:
+
+    EM = 0,   // Empty
+    WP = 1,   // White Pawn
+    WN = 2,   // White Knight
+    WB = 3,   // White Bishop
+    WR = 4,   // White Rook
+    WQ = 5,   // White Queen
+    WK = 6,   // White King
+    BP = -1,  // Black Pawn
+    BN = -2,  // Black Knight
+    BB = -3,  // Black Bishop
+    BR = -4,  // Black Rook
+    BQ = -5,  // Black Queen
+    BK = -6,  // Black King
+    IV = 99   // INVALID
+
+
+	Pentru aceasta etapa:
+	-> Am facut diferite completari la clasele si functiile
+din etapa anterioara (pentru a implementa toate regulile jocului
+de sah) 
+	-> Am implementat algoritmul alpha-beta pentru
+ca engine-ul nostru sa poata juca impotriva unui adversar 
+
+	Principala modificare facuta ce tine de regulile jocului
+consta in implementarea mutarilor "rocada" (mare si mica) si
+"en-passant".
+	Astfel, structuta MOVE contine acum doua flag-uri 
+suplimentare care marcheaza faptul ca mutarea curenta este 
+una din cele mentionate anterior:
+
+typedef struct MOVE {
+
+    int from;
+    int to;
+    int piece;
+    int captured;
+    int promoted;
+    int en_pasant;
+    int castling;
+
+	[...]
+
+} MOVE;
+
+	Am modificat de asemenea functia "findLegalMoves" (care returneaza un
+vector cu toate miscarile legale la un moment dat), astfel incat, daca e cazul,
+sa fie adaugate si miscarile mentionate anterior. Pentru a verifica daca se
+poate face "rocada", in functia "makeMove" sunt actualizate, daca e cazul, 
+flaguri care indica daca tura sau regele au fost mutate pana acum. De asemenea,
+se verifica daca pozitiile implicate in rocada sunt atacate, conform regulilor.
+Pentru a verifica daca se poate lua un pion in "en-passant" se verifica daca
+pionul care este atacat a avut o mutare anterioara de tip dubla avansare
+(folosind vectorul moveHistory).
+
+	Am modificat de asemenea, functia de parsare a miscarilor primite 
+de la adversar pentru a accepta si aceste tipuri de mutari ca fiind valide.
+	
+	Am adaugat faptul ca, atunci cand regele este in sah, trebuie sa 
+faca o mutare care il scoate din sah, pentru ca aceasta sa fie considerata
+valida. In acest sens, am implementat functia "isMyKingInCheck", cu ajutorul
+functiei auxiliare "isThreatened".
+
+	Pentru "creierul" engine-ului am implementat um algoritm apha-beta,
+cu urmatoarea structura:
+
+
+int minimax(int alpha, int beta, int depth, Board &board) {
+
+    if (depth == 0) 
+        return board.eval();
+    
+    vector<MOVE> moves = board.findLegalMoves();
+    int best_score = -BESTSCORE;
+
+    for (int i = 0; i < moves.size(); i++) {
+
+        // Opponent's king can be captured. That means he is check-mated.
+        if (moves[i].captured == BK || moves[i].captured == WK)
+            return 9000 + depth;        
+
+        Board copy(board);
+        copy.makeMove(moves[i]);
+        int score = - minimax(-beta, -alpha, depth - 1, copy);
+
+        if (score > best_score) {
+            best_score = score;
+        }
+        if (best_score > alpha) {
+            alpha = best_score;
+        }
+
+        //cutt-off
+        if (alpha >= beta) {
+            break;
+        }
+    }
+    return best_score;
+}
+
+	Pentru functia de evaluare am tinut cont de 3 aspecte:
+		-> material (cea mai mare pondere)
+		-> numar de miscari legale ramase
+		-> pozitionarea pieselor
+	(si eventualitatea capturarii regelui)
+
+	Pentru calcului materialului, am adaugat clasei Board o variabila
+"score" care este actualizata in functia "makeMove" in cazul in care s-a facut
+o captura sau o promotie. Am asignat pieselor urmatoarele valor:
+
+    Pawn => 100
+    Knight => 300	
+    Bishop => 300
+    Rook => 500   
+    Queen => 900
+
+void Board::makeMove(MOVE move) {
+
+    switch (move.captured)
+    {
+        case WP : case BP : score += 1; break;
+        case WN : case BN : score += 3; break;
+        case WB : case BB : score += 3; break;
+        case WR : case BR : score += 5; break;
+        case WQ : case BQ :score += 9; break;
+        default : break;
+    }
+
+    switch (move.promoted)
+    {
+        case WN : case BN :score += 3-1; break;
+        case WB : case BB : score += 3-1; break;
+        case WR : case BR : score += 5-1; break;
+        case WQ : case BQ : score += 9-1; break;
+        default : break;
+    }
+
+	[..]
+}
+
+(in functia eval, scorul este inmultit cu 100, pentru a avea pondere mai mare)
+
+	Pentru evaluarea pozitionarii pieselor am folosit piece-square tables.
+(sursa: https://www.chessprogramming.org/Simplified_Evaluation_Function):
+
+int pawntable[64] = {
+        0,  0,  0,  0,  0,  0,  0,  0,
+        5, 10, 10,-20,-20, 10, 10,  5,
+        5, -5,-10,  0,  0,-10, -5,  5,
+        0,  0,  0, 20, 20,  0,  0,  0,
+        5,  5, 10, 25, 25, 10,  5,  5,
+        10, 10, 20, 30, 30, 20, 10, 10,
+        50, 50, 50, 50, 50, 50, 50, 50,
+        0,  0,  0,  0,  0,  0,  0,  0};
+
+int knighttable[64] = {
+        -50,-40,-30,-30,-30,-30,-40,-50,
+        -40,-20,  0,  5,  5,  0,-20,-40,
+        -30,  5, 10, 15, 15, 10,  5,-30,
+        -30,  0, 15, 20, 20, 15,  0,-30,
+        -30,  5, 15, 20, 20, 15,  5,-30,
+        -30,  0, 10, 15, 15, 10,  0,-30,
+        -40,-20,  0,  0,  0,  0,-20,-40,
+        -50,-40,-30,-30,-30,-30,-40,-50};
+
+ [...]
+
+	Astfel, in functia searchBestMove, este aplicat algoritmul alpga-beta
+pe fiecare mutare valida la acel moment de timp, iar cele mai bune mutari
+(conform functiei de evaluare) sunt pastrate intr-un vector "bestMoves", 
+alegerea unei mutari din acest vector fiind facuta, pentru aceasta etapa,
+pe baza functiei rand().
+
+	Am folosit pentru aceasta etapa depth-ul 3.	
+
+
+
+Surse de inspiratie:
+
+	Pentru realizarea protocolului de comunicare cu xboard, ne-am inspirat 
+din scheletul pus la dispozitie pe Winboard Forum:
+	http://www.open-aurec.com/wbforum/viewtopic.php?f=24&t=51739
+	
+,respectiv din documentatia oficiala xboard:
+	https://www.gnu.org/software/xboard/engine-intf.html
+
+	Pentru implementarea efectiva a jocului ne-am inspirat din conventiile
+puse la dispozitie pe:
+	https://www.chessprogramming.org/Main_Page
+
+	, respectiv din implementarile diferitelor engine-uri, precum gnuchess,
+Fairy-Max, microMax, mchess etc.
+
+
+Responsabilitatea membrilor
+
+	Si de aceasta data, munca a fost impartita echilibrat (una dintre noi 
+a realizat modificarile necesare rocadei, cealalta pentru en-passant). La fel
+pentru algoritmul alpha-beta si functia de evaluare. Cel mai mult timp l-am 
+alocat insa partii de debugging.
+
+!!!!! Probleme la rulare: !!!!
+
+	Am observat ca desi avem acelasi cod, atunci cand il incarcam pe xboard,
+acesta se comporta diferit in functie de laptop. Desi nu exista diferente
+semnificative legate de cantitatea de RAM, proprietatile procesorului etc, apar
+diferente mari dpdv al timpului de rulare, diferente ce duc la miscorarea
+substantiala a calitatii jocului (la una dintre noi o mutare dureaza 3-4 s,
+in timp ce la cealalta poate dura pana la 10-15 secunde). Din acest motiv, si
+tinand cont de sfaturile primite pe forum, am adaugat in arhiva o medie a rezultatelor
+obtinute de noi in urma rularii programului.
+
+
+
+		
