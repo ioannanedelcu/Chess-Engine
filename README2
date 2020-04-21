@@ -231,16 +231,16 @@ a realizat modificarile necesare rocadei, cealalta pentru en-passant). La fel
 pentru algoritmul alpha-beta si functia de evaluare. Cel mai mult timp l-am 
 alocat insa partii de debugging.
 
-!!!!! Probleme la rulare: !!!!
+!!!!! Media rularilor !!!!
 
-	Am observat ca desi avem acelasi cod, atunci cand il incarcam pe xboard,
-acesta se comporta diferit in functie de laptop. Desi nu exista diferente
-semnificative legate de cantitatea de RAM, proprietatile procesorului etc, apar
-diferente mari dpdv al timpului de rulare, diferente ce duc la miscorarea
-substantiala a calitatii jocului (la una dintre noi o mutare dureaza 3-4 s,
-in timp ce la cealalta poate dura pana la 10-15 secunde). Din acest motiv, si
-tinand cont de sfaturile primite pe forum, am adaugat in arhiva o medie a rezultatelor
-obtinute de noi in urma rularii programului.
+	Tinand cont de eventualele diferentele de rulare si de
+de sfaturile primite pe forum, am adaugat in arhiva si un exemplu
+de output obtinut la rularea comenzii specificata in cerinta (partide.txt).
+
+	In urma a numeroase rulari succesive a variantei finale a proiectului
+pentru aceasta etapa, media rezultatelor a fost de 4 puncte. De obicei cele
+10 runde se incheie cu 5-4-1 sau 5-3-2 sau 4-4-2 pentru Fairymax. In rundele
+pierdute, sunt facute in medie 30-40 de mutari de fiecare.
 
 
 
